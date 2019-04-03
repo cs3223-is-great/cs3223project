@@ -9,18 +9,27 @@ public class BufferManager{
 
     static int numBuffer;
     static int numJoin;
+    static int numSortingExceptJoin;
 
     static int buffPerJoin;
+    static int buffForSorting = 0;
 
 
-    public BufferManager(int numBuffer, int numJoin){
+    public BufferManager(int numBuffer, int numJoin, boolean isDistinct){
 	this.numBuffer = numBuffer;
 	this.numJoin = numJoin;
-	buffPerJoin = numBuffer/numJoin;
+	numSortingExceptJoin += isDistinct ? 1 : 0;
+	
+    buffPerJoin = numBuffer / (numJoin + numSortingExceptJoin);
+    buffForSorting = numBuffer - buffPerJoin * numJoin;
     }
 
     public static int getBuffersPerJoin(){
-	return buffPerJoin;
+    	return buffPerJoin;
+    }
+    
+    public static int getBuffersForSorting() {
+        return buffForSorting;
     }
 
 }

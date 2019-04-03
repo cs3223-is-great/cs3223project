@@ -10,6 +10,7 @@ public class Attribute implements Serializable{
     public static final int INT=1;
     public static final int STRING=2;
     public static final int REAL=3;
+    public static final int TIME = 4;
 
 	/** enumeration of type of key **/
 
@@ -123,8 +124,3 @@ public class Attribute implements Serializable{
     }
 
 }
-
-
-
-
-

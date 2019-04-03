@@ -94,6 +94,8 @@ private static Random random;
 				    // System.out.println("String");
 		}else if(datatype[i].equals("REAL")){
 			type=Attribute.REAL;
+		}else if (datatype[i].equals("TIME")) {
+		    type=Attribute.TIME;
 		}else{
 		    type=-1;
 		    System.err.println("invalid data type");
@@ -156,6 +158,11 @@ private static Random random;
 			if(keytype[j].equals("FK")){
 			    fk[value]=true;
 			}
+		    } else if (datatype[j].equals("TIME")) {
+		        int hour = random.nextInt(24);
+		        int min = random.nextInt(60);
+		        String time = hour + ":" + min;
+		        outtbl.print(time + "\t");
 		    }
 		}
 		if(i!= numtuple-1)
@@ -188,6 +195,8 @@ private static Random random;
 			    outstat.print(range[i]+"\t");
 		    }
 
+		} else if (datatype[i].equals("TIME")) {
+		    outstat.print(numtuple + "\t");
 		}
 	    }
 	    outstat.close();

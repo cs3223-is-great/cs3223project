@@ -87,6 +87,8 @@ public class Debug{
 	    case JoinType.HASHJOIN:
 		System.out.print("HashJoin(");
 		break;
+	    case JoinType.INDEXNESTED:
+	    System.out.print("IndexNestedJoin(");
 	    }
 	    //System.out.print("Join(");
 	    PPrint(((Join)node).getLeft());
@@ -111,7 +113,13 @@ public class Debug{
 
 	}else if(optype==OpType.SCAN){
 	    System.out.print(((Scan)node).getTabName());
-	}
+    
+	} else if (optype == OpType.DUPLICATESREMOVAL) {
+        System.out.print("Project(");
+        PPrint(((DuplicatesRemoval) node).getBase());
+        System.out.print(")");
+
+    }
     }
 
 

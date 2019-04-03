@@ -8,7 +8,7 @@ import java.util.Vector;
 public class Project extends Operator{
 
     Operator base;
-    Vector attrSet;
+    Vector<Attribute> attrSet;
 	int batchsize;  // number of tuples per outbatch
 
 
@@ -26,7 +26,7 @@ public class Project extends Operator{
     int[] attrIndex;
 
 
-    public Project(Operator base, Vector as,int type){
+    public Project(Operator base, Vector<Attribute> as,int type){
 	super(type);
 	this.base=base;
 	this.attrSet=as;
@@ -41,7 +41,7 @@ public class Project extends Operator{
 	return base;
     }
 
-    public Vector getProjAttr(){
+    public Vector<Attribute> getProjAttr(){
 	return attrSet;
     }
 
@@ -54,7 +54,7 @@ public class Project extends Operator{
 	/** setnumber of tuples per batch **/
 	int tuplesize = schema.getTupleSize();
 	batchsize=Batch.getPageSize()/tuplesize;
-
+	//System.out.println("base type is: "+base.getOpType());
 
 	/** The followingl loop findouts the index of the columns that
 	 ** are required from the base operator
@@ -102,10 +102,10 @@ public class Project extends Operator{
 	    Tuple basetuple = inbatch.elementAt(i);
 	    //Debug.PPrint(basetuple);
 	    //System.out.println();
-	    Vector present = new Vector();
+	    Vector<Object> present = new Vector<Object>();
 	    for(int j=0;j<attrSet.size();j++){
 		Object data = basetuple.dataAt(attrIndex[j]);
-		present.add(data);
+		present.add((Object) data);
 	    }
 	    Tuple outtuple = new Tuple(present);
 	    outbatch.add(outtuple);
@@ -116,19 +116,18 @@ public class Project extends Operator{
 
     /** Close the operator */
     public boolean close(){
-		return true;
-		/*
+
+
 	if(base.close())
 	    return true;
 	else
 	    return false;
-	    **/
     }
 
 
     public Object clone(){
 	Operator newbase = (Operator) base.clone();
-	Vector newattr = new Vector();
+	Vector<Attribute> newattr = new Vector<Attribute>();
 	for(int i=0;i<attrSet.size();i++)
 	    newattr.add((Attribute) ((Attribute)attrSet.elementAt(i)).clone());
 	Project newproj = new Project(newbase,newattr,optype);

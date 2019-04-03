@@ -1,0 +1,5 @@
+3
+26
+aid INTEGER 110000 PK 4
+aname STRING 50 NK 20
+crusingrange INTEGER 20000 NK 2

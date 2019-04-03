@@ -20,6 +20,7 @@ public class RandomInitialPlan{
     Vector selectionlist;     //List of select conditons
     Vector joinlist;          //List of join conditions
     Vector groupbylist;
+    boolean isDistinct;
     int numJoin;    // Number of joins in this query
 
 
@@ -35,6 +36,7 @@ public class RandomInitialPlan{
 	selectionlist= sqlquery.getSelectionList();
 	joinlist = sqlquery.getJoinList();
 	groupbylist = sqlquery.getGroupByList();
+	isDistinct = sqlquery.isDistinct();
 	numJoin = joinlist.size();
 
 
@@ -149,6 +151,7 @@ public class RandomInitialPlan{
     public void createJoinOp(){
 	BitSet bitCList = new BitSet(numJoin);
 	int jnnum = RandNumb.randInt(0,numJoin-1);
+
 	Join jn=null;
 	/** Repeat until all the join conditions are considered **/
 	while(bitCList.cardinality() != numJoin){
@@ -198,11 +201,23 @@ public class RandomInitialPlan{
         if ( projectlist == null )
             projectlist = new Vector();
 
-	if(!projectlist.isEmpty()){
+        if (isDistinct) {
+            Schema newSchema;
+            if (projectlist.isEmpty()) {
+                projectlist = base.getSchema().getAttList();
+                newSchema = base.getSchema();
+            } else {
+                newSchema = base.getSchema().subSchema(projectlist);
+            }
+            root = new DuplicatesRemoval(base, projectlist, OpType.DUPLICATESREMOVAL, 0);
+            root.setSchema(newSchema);
+        }
+        
+        else if(!projectlist.isEmpty()){
 	    root = new Project(base,projectlist,OpType.PROJECT);
 	    Schema newSchema = base.getSchema().subSchema(projectlist);
 	    root.setSchema(newSchema);
-	}
+	    }
     }
 
     private void modifyHashtable(Operator old, Operator newop){
