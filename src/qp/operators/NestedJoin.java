@@ -20,8 +20,6 @@ public class NestedJoin extends Join{
 
     String rfname;    // The file name where the right table is materialize
 
-    boolean rightMaterialised; //if the right table is not a base table, it needs to be materialised
-    
     static int filenum=0;   // To get unique filenum for this operation
 
     Batch outbatch;   // Output buffer
@@ -55,54 +53,53 @@ public class NestedJoin extends Join{
 		int tuplesize=schema.getTupleSize();
 		batchsize=Batch.getPageSize()/tuplesize;
 
-    	Attribute leftattr = con.getLhs();
-    	Attribute rightattr =(Attribute) con.getRhs();
-    	leftindex = left.getSchema().indexOf(leftattr);
-    	rightindex = right.getSchema().indexOf(rightattr);
-    	Batch rightpage;
-	
-    	/** initialize the cursors of input buffers **/
-    	lcurs = 0; rcurs =0;
-    	eosl=false;
-    	/** because right stream is to be repetitively scanned
-    	 ** if it reached end, we have to start new scan
-    	 **/
-    	eosr=true;
-    
-    	/** Right hand side table is to be materialized
-    	 ** for the Nested join to perform
-    	 **/
+	Attribute leftattr = con.getLhs();
+	Attribute rightattr =(Attribute) con.getRhs();
+	leftindex = left.getSchema().indexOf(leftattr);
+	rightindex = right.getSchema().indexOf(rightattr);
+	Batch rightpage;
+	/** initialize the cursors of input buffers **/
 
-    	if(!right.open()){
-    	    return false;
-    	}else{
-    	    /** If the right operator is not a base table then
-    	     ** Materialize the intermediate result from right
-    	     ** into a file
-    	     **/
-    
-    	    if(right.getOpType() != OpType.SCAN){
-    	        rightMaterialised = true;
-        	    filenum++;
-        	    rfname = "NJtemp-" + String.valueOf(filenum);
-        	    try{
-            		ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(rfname));
-            		while( (rightpage = right.next()) != null){
-            		    out.writeObject(rightpage);
-            		}
-            		out.close();
-        	    }catch(IOException io){
-            		System.out.println("NestedJoin:writing the temporay file error");
-            		return false;
-        	    }
-    	    if(!right.close())
-    		return false;
-    	    } 
-    	}
-    	if(left.open())
-    	    return true;
-    	else
-    	    return false;
+	lcurs = 0; rcurs =0;
+	eosl=false;
+	/** because right stream is to be repetitively scanned
+	 ** if it reached end, we have to start new scan
+	 **/
+	eosr=true;
+
+	/** Right hand side table is to be materialized
+	 ** for the Nested join to perform
+	 **/
+
+	if(!right.open()){
+	    return false;
+	}else{
+	    /** If the right operator is not a base table then
+	     ** Materialize the intermediate result from right
+	     ** into a file
+	     **/
+
+	    //if(right.getOpType() != OpType.SCAN){
+	    filenum++;
+	    rfname = "NJtemp-" + String.valueOf(filenum);
+	    try{
+		ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(rfname));
+		while( (rightpage = right.next()) != null){
+		    out.writeObject(rightpage);
+		}
+		out.close();
+	    }catch(IOException io){
+		System.out.println("NestedJoin:writing the temporay file error");
+		return false;
+	    }
+		//}
+	    if(!right.close())
+		return false;
+	}
+	if(left.open())
+	    return true;
+	else
+	    return false;
     }
 
 
@@ -127,42 +124,31 @@ public class NestedJoin extends Join{
 	while(!outbatch.isFull()){
 
 	    if(lcurs==0 && eosr==true){
-    		/** new left page is to be fetched**/
-    		leftbatch =(Batch) left.next();
-    		if(leftbatch==null || leftbatch.isEmpty()){
-    		    eosl=true;
-    		    return outbatch;
-    		}
-    		/** Whenver a new left page came , we have to start the
-    		 ** scanning of right table
-    		 **/
-    		if (rightMaterialised) {
-    		    try{
-    
-    	            in = new ObjectInputStream(new FileInputStream(rfname));
-    	            eosr=false;
-    	        }catch(IOException io){
-    	            System.err.println("NestedJoin:error in reading the file");
-    	            System.exit(1);
-    	        }
-    		} else {
-    		    right.open();
-    		}
+		/** new left page is to be fetched**/
+		leftbatch =(Batch) left.next();
+		if(leftbatch==null){
+		    eosl=true;
+		    return outbatch;
+		}
+		/** Whenver a new left page came , we have to start the
+		 ** scanning of right table
+		 **/
+		try{
+
+		    in = new ObjectInputStream(new FileInputStream(rfname));
+		    eosr=false;
+		}catch(IOException io){
+		    System.err.println("NestedJoin:error in reading the file");
+		    System.exit(1);
+		}
+
 	    }
 
 	    while(eosr==false){
 
 		try{
 		    if(rcurs==0 && lcurs==0){
-		        if (rightMaterialised) {
-		            rightbatch = (Batch) in.readObject();
-		        } else {
-		            rightbatch = right.next();
-                    if (rightbatch == null || rightbatch.isEmpty()) {
-                        throw new EOFException("No more tuples in right table");
-                    }
-		        }
-		        
+			rightbatch = (Batch) in.readObject();
 		    }
 
 		    for(i=lcurs;i<leftbatch.size();i++){
@@ -228,7 +214,6 @@ public class NestedJoin extends Join{
 
 
 }
-
 
 
 
