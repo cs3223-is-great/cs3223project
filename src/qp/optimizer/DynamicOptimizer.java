@@ -11,16 +11,16 @@ public class DynamicOptimizer {
 	static SQLQuery sqlquery;     // Vector of Vectors of Select + From + Where + GroupBy
     int numJoin;          // Number of joins in this query plan
 	int numTable;		// Number of Table in this query plan
-	
-	
+
+
 	Vector<Map<Set<String>, Operator>> spaceAmt;
 
 	public DynamicOptimizer(SQLQuery sqlquery) {
-		this.sqlquery = sqlquery;		
+		this.sqlquery = sqlquery;
 		//get number of table from sql query
-		this.numTable = this.sqlquery.getFromList().size(); 
+		this.numTable = this.sqlquery.getFromList().size();
 		spaceAmt = new Vector<Map<Set<String>, Operator>>(this.numTable);
-		
+
 		for (int i = 0; i < this.numTable; i++) {
 			Map<Set<String>, Operator> h_map = new HashMap<Set<String>, Operator>();
 			spaceAmt.add(h_map);
@@ -29,14 +29,14 @@ public class DynamicOptimizer {
 
 	public Operator getOptimizedPlan() {
 		Operator root = null;
-	
+
 		//for s = 1
 		for (int i = 0; i < numTable; i++) {
 			Set<String> namesOfTbl = new HashSet<String>();
 			String tblName = (String) this.sqlquery.getFromList().elementAt(i);
-			
+
 			namesOfTbl.add(tblName);
-			
+
 			root = null;
 			Scan operator = new Scan(tblName, OpType.SCAN);
 			Scan tempOperator = operator;
@@ -51,10 +51,10 @@ public class DynamicOptimizer {
 				System.exit(1);
 			}
 			root = operator;
-			
+
 			Select selectOperator = null; //select operator
 			for (int j = 0; j < this.sqlquery.getSelectionList().size(); j++) {
-				
+
 				Condition cn = (Condition) this.sqlquery.getSelectionList().elementAt(j);
 				if (cn.getOpType() == Condition.SELECT) {
 					if (tblName.equals(cn.getLhs().getTabName())) {
@@ -65,10 +65,10 @@ public class DynamicOptimizer {
 					}
 				}
 			}
-			
+
 			spaceAmt.elementAt(0).put(namesOfTbl, root);
 		}
-		
+
 		//for s = 2 to N
 		for (int i = 1; i < numTable; i++) {
 			//get all subset s where |s|=i+1
@@ -94,11 +94,11 @@ public class DynamicOptimizer {
 		}
 		return spaceAmt.elementAt(numTable - 1).get(tbl);
 	}
-	
-	
-	
+
+
+
 	public static Operator makeExecPlan(Operator node) {
-	
+
 		if (node.getOpType() == OpType.JOIN) {
 			Operator left = makeExecPlan(((Join) node).getLeft());
 			Operator right = makeExecPlan(((Join) node).getRight());
@@ -106,39 +106,39 @@ public class DynamicOptimizer {
 			int numbuff = BufferManager.getBuffersPerJoin();
 			switch (joinType) {
 			case JoinType.NESTEDJOIN:
-	
+
 				NestedJoin nj = new NestedJoin((Join) node);
 				nj.setLeft(left);
 				nj.setRight(right);
 				nj.setNumBuff(numbuff);
 				return nj;
-	
+
 			case JoinType.BLOCKNESTED:
-	
+
 				BlockNested bj = new BlockNested((Join) node);
 				bj.setLeft(left);
 				bj.setRight(right);
 				bj.setNumBuff(numbuff);
 				return bj;
-				
+
 			case JoinType.INDEXNESTED:
-				
+
 				IndexNested in = new IndexNested((Join) node);
 				in.setLeft(left);
 				in.setRight(right);
 				in.setNumBuff(numbuff);
 				return in;
-	
+
 			case JoinType.SORTMERGE:
-	
+
 				SortMergeJoin sm = new SortMergeJoin((Join) node);
 				sm.setLeft(left);
 				sm.setRight(right);
 				sm.setNumBuff(numbuff);
 				return sm;
-	
+
 			case JoinType.HASHJOIN:
-	
+
 				HashJoin hj = new HashJoin((Join) node);
 				hj.setLeft(left);
 				hj.setRight(right);
@@ -159,33 +159,33 @@ public class DynamicOptimizer {
 			return node;
 		}
 	}
-	
-	
+
+
 	private Operator getBestPlan(String[] subset) { //to get the best plan for one subset
 		int size = subset.length;
 		int bestPlanCost = Integer.MAX_VALUE;
 		Operator curRoot = null;
-		
+
 		for (int i = 0; i < size; i++) {
 
 			String tableName = subset[i];
 			Set<String> oneTable = new HashSet<String>();
 			oneTable.add(tableName);
-	
+
 			Set<String> restTables = new HashSet<String>();
 			Condition condition = null;
 			for (int j = 0; j < size; j++) {
 				if (j != i)
 					restTables.add(subset[j]);
 			}
-			
-			
+
+
 			Operator preRoot = spaceAmt.elementAt(size - 2).get(restTables);
 
 			if (preRoot == null) continue;
 
-			
-			
+
+
 			condition = getJoinCondition(preRoot, oneTable);
 			int plancost;
 			PlanCost pc = new PlanCost();
@@ -193,11 +193,11 @@ public class DynamicOptimizer {
 				Join newJoin = new Join(preRoot, spaceAmt.elementAt(0).get(oneTable), condition, OpType.JOIN);
 				Schema newSchema = preRoot.getSchema().joinWith(spaceAmt.elementAt(0).get(oneTable).getSchema());
 				newJoin.setSchema(newSchema);
-	
+
 				int curCost = 0;
 				plancost = Integer.MAX_VALUE;
-				int type=1;
-	
+				int type=0;
+
 				newJoin.setJoinType(JoinType.BLOCKNESTED);
 				pc = new PlanCost();
 				curCost = pc.getCost(newJoin);
@@ -213,7 +213,7 @@ public class DynamicOptimizer {
 					plancost = curCost;
 					type = JoinType.NESTEDJOIN;
 				}
-	
+
 				newJoin.setJoinType(JoinType.INDEXNESTED);
 				pc = new PlanCost();
 				curCost = pc.getCost(newJoin);
@@ -229,7 +229,7 @@ public class DynamicOptimizer {
 				 	plancost = curCost;
 				 	type = JoinType.HASHJOIN;
 				 }
-	
+
 				newJoin.setJoinType(JoinType.SORTMERGE);
 				pc = new PlanCost();
 				curCost = pc.getCost(newJoin);
@@ -237,9 +237,9 @@ public class DynamicOptimizer {
 					plancost = curCost;
 					type = JoinType.SORTMERGE;
 				}
-	
+
 				newJoin.setJoinType(type);
-	
+
 				if (plancost < bestPlanCost) {
 					bestPlanCost = plancost;
 					curRoot = newJoin;
@@ -248,7 +248,7 @@ public class DynamicOptimizer {
 		}
 		return curRoot;
 	}
-	
+
 	private Condition getJoinCondition(Operator preRoot, Set<String> oneTable) {
 		for (int i = 0; i < this.sqlquery.getJoinList().size(); i++) {
 			Condition con = (Condition) this.sqlquery.getJoinList().elementAt(i);
@@ -265,7 +265,7 @@ public class DynamicOptimizer {
 		}
 		return null;
 	}
-	
+
 
 	private Map<Integer, Set<String>> getSubsets(int size) {
 		Map<Integer, Set<String>> map = new HashMap<Integer, Set<String>>();
